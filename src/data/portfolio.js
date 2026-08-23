@@ -43,7 +43,7 @@ export const experience = [
   { title: 'Agentblazer Champion Workshop', org: 'Salesforce · SmartBridge', date: '2025' },
   { title: 'Programming Foundations', org: 'Self-learning, coursework, and personal projects', date: '2024' },
   { title: 'Division RoboCom Winner', org: 'Senior High School — SY 2023-2024', date: '2024' },
-  { title: '"Hello World" — First Line of Code', org: 'Sparked my curiosity in programming', date: 'Dec 2023' },
+  { title: '"Hello World" — First Line of Code', org: 'Sparked my curiosity in programming', date: '2023' },
 ];
 
 // image should point to a file in /public (e.g. '/my-new-project.png').
