@@ -37,7 +37,7 @@ export function ProjectCard({ p, onExpand }) {
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
           >
-            Live Demo
+            {p.linkLabel || 'Live Demo'}
           </a>
         )}
         {p.github && (

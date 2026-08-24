@@ -73,6 +73,7 @@ export const projects = [
   title: 'Expense Tracker',
   desc: 'Solo Mobile Developer — Personal Project (2026). Built a Flutter/Dart expense tracker with local SQLite persistence — add/edit/delete income and expenses, per-category monthly budgets with progress tracking, and category breakdown reports (pie chart, spending trends). Structured with a single ChangeNotifier provider as the source of truth; unit and widget tested.',
   link: 'https://github.com/Dice0127/expense-tracker/releases/download/v1.0.0/app-release.apk',
+  linkLabel: 'Download APK',
   github: 'https://github.com/Dice0127/expense-tracker',
   image: '/ExpenseTracker.png',
   }
