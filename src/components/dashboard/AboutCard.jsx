@@ -30,7 +30,7 @@ function AboutCard({
       </div>
 
       <div className="dcard dcard-certs reveal">
-        <CardHeader icon={<CertIcon />} title="Recent Certifications" onViewAll={onViewAllCerts} />
+        <CardHeader icon={<CertIcon />} title="Training & Certifications" onViewAll={onViewAllCerts} />
         <div className="cert-list">
           {previewCerts.map((c, i) => (
             <button className="cert-row" key={i} onClick={() => onSelectCert(c)}>

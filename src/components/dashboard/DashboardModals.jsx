@@ -26,7 +26,7 @@ export function AllCertsModal({ certifications, onClose, onSelectCert }) {
     <div className="list-modal-backdrop" onClick={onClose}>
       <div className="list-modal" onClick={(e) => e.stopPropagation()}>
         <div className="list-modal-header">
-          <h3>All Certifications</h3>
+          <h3>All Training & Certifications</h3>
           <button className="list-modal-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="list-modal-body">
