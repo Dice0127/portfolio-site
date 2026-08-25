@@ -1,6 +1,10 @@
-# Jade Guevarra — Portfolio
+# My Portfolio
 
 Personal portfolio site built with React + Vite. Showcases projects, certifications, tech stack, and background.
+
+![Portfolio Screenshot](docs/screenshot.png)
+
+> 🔗 **Live site:** [portfolio-site-opal-six.vercel.app](https://portfolio-site-opal-six.vercel.app)
 
 ## Tech Stack
 
