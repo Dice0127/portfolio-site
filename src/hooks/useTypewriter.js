@@ -16,8 +16,10 @@ function useTypewriter(words, speed = 100, pause = 1500) {
     } else if (deleting && text.length > 0) {
       timeout = setTimeout(() => setText(currentWord.slice(0, text.length - 1)), speed / 2);
     } else if (deleting && text.length === 0) {
-      setDeleting(false);
-      setWordIndex((wordIndex + 1) % words.length);
+      timeout = setTimeout(() => {
+        setDeleting(false);
+        setWordIndex((wordIndex + 1) % words.length);
+      }, speed / 2);
     }
 
     return () => clearTimeout(timeout);

@@ -1,24 +1,28 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import './Hero.css';
 import ThemeToggle from '../ThemeToggle';
 import useTypewriter from '../hooks/useTypewriter';
 import { roles, techStack } from '../data/portfolio';
 
 function Hero() {
+  const marqueeItems = useMemo(
+    () => [...techStack, ...techStack, ...techStack, ...techStack],
+    []
+  );
   const displayText = useTypewriter(roles, 90, 1200);
-  const photoRef = useRef(null);
+    const photoRef = useRef(null);
 
   // mouse-tilt interaction on the profile photo
-  const handleMouseMove = (e) => {
-    const el = photoRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    const rotateX = (-y / rect.height) * 14;
-    const rotateY = (x / rect.width) * 14;
-    el.style.transform = `perspective(600px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
-  };
+    const handleMouseMove = (e) => {
+      const el = photoRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const rotateX = (-y / rect.height) * 14;
+      const rotateY = (x / rect.width) * 14;
+      el.style.transform = `perspective(600px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+    };
 
   const handleMouseLeave = () => {
     const el = photoRef.current;
@@ -91,8 +95,8 @@ function Hero() {
 
       <div className="tech-marquee">
         <div className="tech-marquee-track">
-          {[...techStack, ...techStack, ...techStack, ...techStack].map((t, i) => (
-            <div className="tech-pill" key={i}>
+          {marqueeItems.map((t, i) => (
+            <div className="tech-pill" key={`${t.name}-${i}`} aria-hidden={i >= techStack.length || undefined}>
               <span
                 className="tech-icon-badge"
                 style={{ background: t.solid ? '#ffffff' : 'transparent' }}
