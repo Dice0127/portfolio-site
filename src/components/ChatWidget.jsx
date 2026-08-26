@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import './ChatWidget.css';
 
-const GREETING = "Hey! I'm Jade's portfolio assistant — ask me about his projects, skills, or background 👋";
+const GREETING = "Hey, I'm Jade! 👋 Ask me anything about my projects, skills, or background.";
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -57,9 +57,9 @@ export default function ChatWidget() {
   return (
     <div className="chat-widget">
       {open && (
-        <div className="chat-panel" role="dialog" aria-label="Chat with Jade's portfolio assistant">
+        <div className="chat-panel" role="dialog" aria-label="Chat with Jade">
           <div className="chat-header">
-            <span>💬 Ask Jade's Assistant</span>
+            <span>💬 Chat with Jade</span>
             <button className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">
               ✕
             </button>
