@@ -17,7 +17,14 @@ import {
 // Lite first for speed — smaller/faster model, still free tier, good enough
 // for short Q&A chat. Falls through to bigger/newer models only if Lite
 // fails or is overloaded.
-const GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
+//
+// NOTE: gemini-flash-latest is explicitly documented by Google as an
+// EXPERIMENTAL alias — "not suitable for production" with tighter rate
+// limits — which was causing frequent 503s. Swapped it out for stable
+// GA models. gemini-2.5-flash-lite/-flash are on Google's deprecation
+// path (shutting down Oct 2026), so the 3.x stable models are listed
+// first as the long-term-safe primaries.
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 const GEMINI_URL_FOR = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 // Builds the system prompt dynamically from portfolio.js, so the bot's
@@ -198,7 +205,7 @@ export default async function handler(req, res) {
     if (!response || !response.ok) {
       console.error('Gemini API error (all models/attempts exhausted):', lastErrStatus, lastErrText);
       return res.status(502).json({
-        error: "Google's AI servers are overloaded right now — this is on their end, not mine. Please try again in a minute!",
+        error: "Hey, sorry — I'm having a bit of trouble getting back to you right now. Give it a minute and try again?",
       });
     }
 
@@ -210,6 +217,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ reply });
   } catch (err) {
     console.error('Chat handler error:', err);
-    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    return res.status(500).json({ error: "Something glitched on my end — mind trying that again?" });
   }
 }

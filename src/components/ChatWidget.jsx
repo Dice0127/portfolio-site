@@ -78,7 +78,7 @@ export default function ChatWidget() {
             <div className="chat-header-info">
               <span className="chat-header-name">Jade Guevarra</span>
               <span className="chat-header-status">
-                <span className="status-dot" /> Online · Powered by Google Gemini
+                <span className="status-dot" /> Usually replies in a few seconds
               </span>
             </div>
             <button className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">
