@@ -14,7 +14,10 @@ import {
   beyondCoding,
 } from '../src/data/portfolio.js';
 
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash']; // try latest first, fall back to a pinned stable model if overloaded
+// Lite first for speed — smaller/faster model, still free tier, good enough
+// for short Q&A chat. Falls through to bigger/newer models only if Lite
+// fails or is overloaded.
+const GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
 const GEMINI_URL_FOR = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 // Builds the system prompt dynamically from portfolio.js, so the bot's
@@ -124,9 +127,10 @@ export default async function handler(req, res) {
 
     // Gemini's free tier occasionally returns 503 "model overloaded" during
     // traffic spikes (a known, widespread Google-side issue, not specific to
-    // this app). Retry briefly on the primary model, then fall back to a
-    // second, pinned model — overload on one model doesn't always mean the
-    // other is also overloaded.
+    // this app), and sometimes a model ID gets deprecated with no warning
+    // (404) or hits a per-model quirk (400). Whatever the error, we want to
+    // try every model in the list before giving up — bailing out on the
+    // FIRST error defeats the whole point of having a fallback list.
     //
     // Each attempt is bounded by its own timeout so a single hung request
     // can't eat the whole serverless function budget (10s on Vercel Hobby)
@@ -148,8 +152,9 @@ export default async function handler(req, res) {
       }
     }
 
-    let response;
+    let response = null;
     let lastErrText = '';
+    let lastErrStatus = null;
     const attemptsPerModel = 2;
 
     outer: for (const model of GEMINI_MODELS) {
@@ -158,6 +163,7 @@ export default async function handler(req, res) {
           response = await callGemini(model);
         } catch (err) {
           lastErrText = err?.name === 'AbortError' ? 'timeout' : String(err);
+          lastErrStatus = null;
           console.warn(`Gemini request failed on ${model}, attempt ${attempt}/${attemptsPerModel}:`, lastErrText);
           response = null;
           continue; // try next attempt/model immediately, no extra sleep
@@ -166,11 +172,22 @@ export default async function handler(req, res) {
         if (response.ok) break outer;
 
         lastErrText = await response.text();
+        lastErrStatus = response.status;
         const isOverloaded = response.status === 503 || response.status === 429;
 
+        // A model-not-found (404) means this specific model ID is bad —
+        // no point retrying it again, move straight to the next model.
+        if (response.status === 404) {
+          console.warn(`Model ${model} not found (404), skipping to next model`);
+          break;
+        }
+
         if (!isOverloaded) {
-          console.error('Gemini API error:', model, response.status, lastErrText);
-          return res.status(502).json({ error: 'Chat service unavailable, try again later.' });
+          // Some other error (400, safety block, etc). Log it and still
+          // try the next model in the list rather than giving up entirely —
+          // a different model may not hit the same issue.
+          console.warn(`Gemini error on ${model} (non-retryable on this model):`, response.status, lastErrText);
+          break;
         }
 
         console.warn(`Gemini overloaded on ${model}, attempt ${attempt}/${attemptsPerModel}`);
@@ -179,7 +196,7 @@ export default async function handler(req, res) {
     }
 
     if (!response || !response.ok) {
-      console.error('Gemini API error (all models/attempts exhausted):', lastErrText);
+      console.error('Gemini API error (all models/attempts exhausted):', lastErrStatus, lastErrText);
       return res.status(502).json({
         error: "Google's AI servers are overloaded right now — this is on their end, not mine. Please try again in a minute!",
       });
