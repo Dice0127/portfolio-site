@@ -14,8 +14,8 @@ import {
   beyondCoding,
 } from '../src/data/portfolio.js';
 
-const GEMINI_MODEL = 'gemini-flash-latest'; // auto-updates to Google's current stable Flash model
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash']; // try latest first, fall back to a pinned stable model if overloaded
+const GEMINI_URL_FOR = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 // Builds the system prompt dynamically from portfolio.js, so the bot's
 // knowledge always matches whatever is on the site — no duplicate data to
@@ -123,35 +123,42 @@ export default async function handler(req, res) {
     });
 
     // Gemini's free tier occasionally returns 503 "model overloaded" during
-    // traffic spikes. Retry a couple of times with a short backoff before
-    // giving up, since it usually clears up within a second or two.
+    // traffic spikes (a known, widespread Google-side issue, not specific to
+    // this app). Retry briefly on the primary model, then fall back to a
+    // second, pinned model — overload on one model doesn't always mean the
+    // other is also overloaded.
     let response;
     let lastErrText = '';
-    const maxAttempts = 3;
+    const attemptsPerModel = 2;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: requestBody,
-      });
-
-      if (response.ok) break;
-
-      lastErrText = await response.text();
-      const isOverloaded = response.status === 503 || response.status === 429;
-
-      if (!isOverloaded || attempt === maxAttempts) {
-        console.error('Gemini API error:', response.status, lastErrText);
-        return res.status(502).json({
-          error: isOverloaded
-            ? "I'm getting a lot of requests right now — give it a few seconds and try again?"
-            : 'Chat service unavailable, try again later.',
+    outer: for (const model of GEMINI_MODELS) {
+      for (let attempt = 1; attempt <= attemptsPerModel; attempt++) {
+        response = await fetch(`${GEMINI_URL_FOR(model)}?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: requestBody,
         });
-      }
 
-      // Backoff: 500ms, then 1000ms before retrying.
-      await new Promise((r) => setTimeout(r, attempt * 500));
+        if (response.ok) break outer;
+
+        lastErrText = await response.text();
+        const isOverloaded = response.status === 503 || response.status === 429;
+
+        if (!isOverloaded) {
+          console.error('Gemini API error:', model, response.status, lastErrText);
+          return res.status(502).json({ error: 'Chat service unavailable, try again later.' });
+        }
+
+        console.warn(`Gemini overloaded on ${model}, attempt ${attempt}/${attemptsPerModel}`);
+        await new Promise((r) => setTimeout(r, attempt * 500));
+      }
+    }
+
+    if (!response.ok) {
+      console.error('Gemini API error (all models/attempts exhausted):', lastErrText);
+      return res.status(502).json({
+        error: "Google's AI servers are overloaded right now — this is on their end, not mine. Please try again in a minute!",
+      });
     }
 
     const data = await response.json();
