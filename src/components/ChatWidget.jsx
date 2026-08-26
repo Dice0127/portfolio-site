@@ -36,6 +36,9 @@ export default function ChatWidget() {
     setLoading(true);
     setError(null);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -44,6 +47,7 @@ export default function ChatWidget() {
           message: text,
           history: nextMessages.slice(1, -1).map(({ role, text }) => ({ role, text })),
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -54,8 +58,13 @@ export default function ChatWidget() {
       const data = await res.json();
       setMessages((prev) => [...prev, { role: 'model', text: data.reply, time: new Date() }]);
     } catch (err) {
-      setError(err.message || 'Failed to send message. Please try again.');
+      if (err.name === 'AbortError') {
+        setError('Taking too long to respond. Please try again.');
+      } else {
+        setError(err.message || 'Failed to send message. Please try again.');
+      }
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   }

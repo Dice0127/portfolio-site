@@ -118,7 +118,7 @@ export default async function handler(req, res) {
       contents,
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 300,
+        maxOutputTokens: 500,
       },
     });
 
@@ -127,17 +127,41 @@ export default async function handler(req, res) {
     // this app). Retry briefly on the primary model, then fall back to a
     // second, pinned model — overload on one model doesn't always mean the
     // other is also overloaded.
+    //
+    // Each attempt is bounded by its own timeout so a single hung request
+    // can't eat the whole serverless function budget (10s on Vercel Hobby)
+    // before we even get a chance to retry or fall back.
+    const PER_ATTEMPT_TIMEOUT_MS = 7000;
+
+    async function callGemini(model) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), PER_ATTEMPT_TIMEOUT_MS);
+      try {
+        return await fetch(`${GEMINI_URL_FOR(model)}?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: requestBody,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     let response;
     let lastErrText = '';
     const attemptsPerModel = 2;
 
     outer: for (const model of GEMINI_MODELS) {
       for (let attempt = 1; attempt <= attemptsPerModel; attempt++) {
-        response = await fetch(`${GEMINI_URL_FOR(model)}?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: requestBody,
-        });
+        try {
+          response = await callGemini(model);
+        } catch (err) {
+          lastErrText = err?.name === 'AbortError' ? 'timeout' : String(err);
+          console.warn(`Gemini request failed on ${model}, attempt ${attempt}/${attemptsPerModel}:`, lastErrText);
+          response = null;
+          continue; // try next attempt/model immediately, no extra sleep
+        }
 
         if (response.ok) break outer;
 
@@ -150,11 +174,11 @@ export default async function handler(req, res) {
         }
 
         console.warn(`Gemini overloaded on ${model}, attempt ${attempt}/${attemptsPerModel}`);
-        await new Promise((r) => setTimeout(r, attempt * 500));
+        await new Promise((r) => setTimeout(r, 300));
       }
     }
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
       console.error('Gemini API error (all models/attempts exhausted):', lastErrText);
       return res.status(502).json({
         error: "Google's AI servers are overloaded right now — this is on their end, not mine. Please try again in a minute!",
