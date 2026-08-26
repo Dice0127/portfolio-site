@@ -111,25 +111,47 @@ export default async function handler(req, res) {
   ];
 
   try {
-    const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: buildSystemPrompt() }],
-        },
-        contents,
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 300,
-        },
-      }),
+    const requestBody = JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: buildSystemPrompt() }],
+      },
+      contents,
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 300,
+      },
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API error:', response.status, errText);
-      return res.status(502).json({ error: 'Chat service unavailable, try again later.' });
+    // Gemini's free tier occasionally returns 503 "model overloaded" during
+    // traffic spikes. Retry a couple of times with a short backoff before
+    // giving up, since it usually clears up within a second or two.
+    let response;
+    let lastErrText = '';
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody,
+      });
+
+      if (response.ok) break;
+
+      lastErrText = await response.text();
+      const isOverloaded = response.status === 503 || response.status === 429;
+
+      if (!isOverloaded || attempt === maxAttempts) {
+        console.error('Gemini API error:', response.status, lastErrText);
+        return res.status(502).json({
+          error: isOverloaded
+            ? "I'm getting a lot of requests right now — give it a few seconds and try again?"
+            : 'Chat service unavailable, try again later.',
+        });
+      }
+
+      // Backoff: 500ms, then 1000ms before retrying.
+      await new Promise((r) => setTimeout(r, attempt * 500));
     }
 
     const data = await response.json();
