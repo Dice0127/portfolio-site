@@ -14,7 +14,7 @@ import {
   beyondCoding,
 } from '../src/data/portfolio.js';
 
-const GEMINI_MODEL = 'gemini-2.0-flash'; // fast + cheap, good for chat widgets
+const GEMINI_MODEL = 'gemini-flash-latest'; // auto-updates to Google's current stable Flash model
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // Builds the system prompt dynamically from portfolio.js, so the bot's

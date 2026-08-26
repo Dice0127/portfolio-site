@@ -2,11 +2,17 @@
 import { useState, useRef, useEffect } from 'react';
 import './ChatWidget.css';
 
-const GREETING = "Hey, I'm Jade! 👋 Ask me anything about my projects, skills, or background.";
+const GREETING = "Hi there! 👋 Thanks for visiting my website. Feel free to ask me anything about my projects, skills, background, or my experiences in tech. Let me know what I can help with!";
+
+function formatTime(date) {
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([{ role: 'model', text: GREETING }]);
+  const [messages, setMessages] = useState([
+    { role: 'model', text: GREETING, time: new Date() },
+  ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -23,7 +29,8 @@ export default function ChatWidget() {
     const text = input.trim();
     if (!text || loading) return;
 
-    const nextMessages = [...messages, { role: 'user', text }];
+    const userMsg = { role: 'user', text, time: new Date() };
+    const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setInput('');
     setLoading(true);
@@ -35,8 +42,7 @@ export default function ChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          // Send prior turns (excluding the greeting) so the model has context.
-          history: nextMessages.slice(1, -1),
+          history: nextMessages.slice(1, -1).map(({ role, text }) => ({ role, text })),
         }),
       });
 
@@ -46,7 +52,7 @@ export default function ChatWidget() {
       }
 
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: 'model', text: data.reply }]);
+      setMessages((prev) => [...prev, { role: 'model', text: data.reply, time: new Date() }]);
     } catch (err) {
       setError(err.message || 'Failed to send message. Please try again.');
     } finally {
@@ -59,7 +65,13 @@ export default function ChatWidget() {
       {open && (
         <div className="chat-panel" role="dialog" aria-label="Chat with Jade">
           <div className="chat-header">
-            <span>💬 Chat with Jade</span>
+            <img src="/profile.jpg" alt="Jade" className="chat-avatar" />
+            <div className="chat-header-info">
+              <span className="chat-header-name">Jade Guevarra</span>
+              <span className="chat-header-status">
+                <span className="status-dot" /> Online · Powered by Google Gemini
+              </span>
+            </div>
             <button className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">
               ✕
             </button>
@@ -67,15 +79,29 @@ export default function ChatWidget() {
 
           <div className="chat-messages" ref={scrollRef}>
             {messages.map((m, i) => (
-              <div key={i} className={`chat-bubble ${m.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--bot'}`}>
-                {m.text}
+              <div
+                key={i}
+                className={`chat-row ${m.role === 'user' ? 'chat-row--user' : 'chat-row--bot'}`}
+              >
+                {m.role === 'model' && <img src="/profile.jpg" alt="" className="chat-bubble-avatar" />}
+                <div className="chat-bubble-col">
+                  <div className={`chat-bubble ${m.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--bot'}`}>
+                    {m.text}
+                  </div>
+                  <span className={`chat-time ${m.role === 'user' ? 'chat-time--user' : ''}`}>
+                    {formatTime(m.time)}
+                  </span>
+                </div>
               </div>
             ))}
             {loading && (
-              <div className="chat-bubble chat-bubble--bot chat-bubble--typing">
-                <span className="dot" />
-                <span className="dot" />
-                <span className="dot" />
+              <div className="chat-row chat-row--bot">
+                <img src="/profile.jpg" alt="" className="chat-bubble-avatar" />
+                <div className="chat-bubble chat-bubble--bot chat-bubble--typing">
+                  <span className="dot" />
+                  <span className="dot" />
+                  <span className="dot" />
+                </div>
               </div>
             )}
             {error && <div className="chat-error">{error}</div>}
@@ -86,11 +112,11 @@ export default function ChatWidget() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about my projects, skills..."
+              placeholder="Type a message..."
               maxLength={2000}
               disabled={loading}
             />
-            <button type="submit" disabled={loading || !input.trim()}>
+            <button type="submit" disabled={loading || !input.trim()} aria-label="Send">
               ➤
             </button>
           </form>
