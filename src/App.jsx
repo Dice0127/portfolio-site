@@ -1,3 +1,4 @@
+import ChatWidget from './components/ChatWidget';
 import Hero from './components/Hero';
 import Dashboard from './components/Dashboard';
 import Footer from './components/Footer';
@@ -8,6 +9,7 @@ function App() {
       <Hero />
       <Dashboard />
       <Footer />
+      <ChatWidget />
     </div>
   );
 }
